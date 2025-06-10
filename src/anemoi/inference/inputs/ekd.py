@@ -20,6 +20,7 @@ from earthkit.data.utils.dates import to_datetime
 from numpy.typing import DTypeLike
 
 from anemoi.inference.context import Context
+from anemoi.inference.pre_processors import create_pre_processor
 from anemoi.inference.processor import Processor
 from anemoi.inference.types import Date, FloatArray, State
 
@@ -128,7 +129,23 @@ class EkdInput(Input):
 
         self._namer = namer if namer is not None else self.checkpoint.default_namer()
         assert callable(self._namer), type(self._namer)
-        self._pre_processors = pre_processors or []
+        self._pre_processors = self.create_pre_processors(context, pre_processors or [])
+
+    def create_pre_processors(self, context, config) -> List[Processor]:
+        """Create pre-processors.
+
+        Returns
+        -------
+        List[Processor]
+            The created pre-processors.
+        """
+
+        result = []
+        for processor in config:
+            result.append(create_pre_processor(context, processor))
+
+        LOG.info("Pre processors: %s", result)
+        return result
 
     def _filter_and_sort(
         self, data: Any, *, variables: List[str], dates: List[Any], title: str
