@@ -447,7 +447,7 @@ class EkdInput(Input):
         State
             The loaded forcings state.
         """
-        for processor in self.context.pre_processors:
+        for processor in self._pre_processors:
             LOG.info("Processing with %s", processor)
             fields = processor.process(fields)
 
