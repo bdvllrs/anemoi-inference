@@ -11,7 +11,12 @@
 import logging
 import re
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
@@ -22,7 +27,9 @@ from numpy.typing import DTypeLike
 from anemoi.inference.context import Context
 from anemoi.inference.pre_processors import create_pre_processor
 from anemoi.inference.processor import Processor
-from anemoi.inference.types import Date, FloatArray, State
+from anemoi.inference.types import Date
+from anemoi.inference.types import FloatArray
+from anemoi.inference.types import State
 
 from ..checks import check_data
 from ..input import Input
@@ -33,9 +40,7 @@ LOG = logging.getLogger(__name__)
 class RulesNamer:
     """A namer that uses rules to generate names."""
 
-    def __init__(
-        self, rules: Any, default_namer: Callable[[Any, Dict[str, Any]], str]
-    ) -> None:
+    def __init__(self, rules: Any, default_namer: Callable[[Any, Dict[str, Any]], str]) -> None:
         """Initialize the RulesNamer.
 
         Parameters
@@ -74,9 +79,7 @@ class RulesNamer:
 
         return self.default_namer(field, original_metadata)
 
-    def substitute(
-        self, template: str, field: Any, original_metadata: Dict[str, Any]
-    ) -> str:
+    def substitute(self, template: str, field: Any, original_metadata: Dict[str, Any]) -> str:
         """Substitute placeholders in the template with metadata values.
 
         Parameters
@@ -105,9 +108,7 @@ class EkdInput(Input):
         self,
         context: Context,
         *,
-        namer: Optional[
-            Union[Callable[[Any, Dict[str, Any]], str], Dict[str, Any]]
-        ] = None,
+        namer: Optional[Union[Callable[[Any, Dict[str, Any]], str], Dict[str, Any]]] = None,
         pre_processors: Optional[List[Processor]] = None,
     ) -> None:
         """Initialize the EkdInput.
@@ -147,9 +148,7 @@ class EkdInput(Input):
         LOG.info("Pre processors: %s", result)
         return result
 
-    def _filter_and_sort(
-        self, data: Any, *, variables: List[str], dates: List[Any], title: str
-    ) -> Any:
+    def _filter_and_sort(self, data: Any, *, variables: List[str], dates: List[Any], title: str) -> Any:
         """Filter and sort the data.
 
         Parameters
@@ -263,15 +262,11 @@ class EkdInput(Input):
         dates = sorted([to_datetime(d) for d in dates])
         date_to_index = {d.isoformat(): i for i, d in enumerate(dates)}
 
-        state = dict(
-            date=dates[-1], latitudes=latitudes, longitudes=longitudes, fields=dict()
-        )
+        state = dict(date=dates[-1], latitudes=latitudes, longitudes=longitudes, fields=dict())
 
         state_fields = state["fields"]
 
-        fields = self._filter_and_sort(
-            fields, variables=variables, dates=dates, title="Create input state"
-        )
+        fields = self._filter_and_sort(fields, variables=variables, dates=dates, title="Create input state")
 
         if latitudes is None and longitudes is None:
             try:
@@ -305,10 +300,7 @@ class EkdInput(Input):
 
         n_points = fields[0].to_numpy(dtype=dtype, flatten=flatten).size
         for field in fields:
-            name, valid_datetime = (
-                field.metadata("name"),
-                field.metadata("valid_datetime"),
-            )
+            name, valid_datetime = field.metadata("name"), field.metadata("valid_datetime")
             if name not in state_fields:
                 state_fields[name] = np.full(
                     shape=(len(dates), n_points),
@@ -319,20 +311,13 @@ class EkdInput(Input):
             date_idx = date_to_index[valid_datetime]
 
             try:
-                state_fields[name][date_idx] = field.to_numpy(
-                    dtype=dtype, flatten=flatten
-                )
+                state_fields[name][date_idx] = field.to_numpy(dtype=dtype, flatten=flatten)
             except ValueError:
                 LOG.error(
-                    "Error with field %s: expected shape=%s, got shape=%s",
-                    name,
-                    state_fields[name].shape,
-                    field.shape,
+                    "Error with field %s: expected shape=%s, got shape=%s", name, state_fields[name].shape, field.shape
                 )
                 LOG.error("dates %s", dates)
-                LOG.error(
-                    "number_of_grid_points %s", self.checkpoint.number_of_grid_points
-                )
+                LOG.error("number_of_grid_points %s", self.checkpoint.number_of_grid_points)
                 raise
 
             if date_idx in check[name]:
@@ -397,13 +382,9 @@ class EkdInput(Input):
             The created input state.
         """
         if date is None:
-            date = input_fields.order_by(valid_datetime="ascending")[-1].datetime()[
-                "valid_time"
-            ]
+            date = input_fields.order_by(valid_datetime="ascending")[-1].datetime()["valid_time"]
             LOG.info(
-                "%s: `date` not provided, using the most recent date: %s",
-                self.__class__.__name__,
-                date.isoformat(),
+                "%s: `date` not provided, using the most recent date: %s", self.__class__.__name__, date.isoformat()
             )
 
         # TODO: where we do this might change in the future

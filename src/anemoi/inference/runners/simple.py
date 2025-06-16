@@ -9,11 +9,14 @@
 
 
 import logging
-from typing import Any, List
+from typing import Any
+from typing import List
 
-from anemoi.inference.types import IntArray, State
+from anemoi.inference.types import IntArray
+from anemoi.inference.types import State
 
-from ..forcings import ComputedForcings, Forcings
+from ..forcings import ComputedForcings
+from ..forcings import Forcings
 from ..runner import Runner
 from . import runner_registry
 
@@ -72,9 +75,7 @@ class SimpleRunner(Runner):
         """
         super().__init__(*args, **kwargs)
 
-    def create_constant_computed_forcings(
-        self, variables: List[str], mask: IntArray
-    ) -> List[Forcings]:
+    def create_constant_computed_forcings(self, variables: List[str], mask: IntArray) -> List[Forcings]:
         """Create constant computed forcings.
 
         Parameters
@@ -93,9 +94,7 @@ class SimpleRunner(Runner):
         LOG.info("Constant computed forcing: %s", result)
         return [result]
 
-    def create_dynamic_computed_forcings(
-        self, variables: List[str], mask: IntArray
-    ) -> List[Forcings]:
+    def create_dynamic_computed_forcings(self, variables: List[str], mask: IntArray) -> List[Forcings]:
         """Create dynamic computed forcings.
 
         Parameters
@@ -114,9 +113,7 @@ class SimpleRunner(Runner):
         LOG.info("Dynamic computed forcing: %s", result)
         return [result]
 
-    def create_constant_coupled_forcings(
-        self, variables: List[str], mask: IntArray
-    ) -> List[Forcings]:
+    def create_constant_coupled_forcings(self, variables: List[str], mask: IntArray) -> List[Forcings]:
         """Create constant coupled forcings.
 
         Parameters
@@ -137,9 +134,7 @@ class SimpleRunner(Runner):
         LOG.warning("Coupled forcings are not supported by this runner: %s", variables)
         return []
 
-    def create_dynamic_coupled_forcings(
-        self, variables: List[str], mask: IntArray
-    ) -> List[Forcings]:
+    def create_dynamic_coupled_forcings(self, variables: List[str], mask: IntArray) -> List[Forcings]:
         """Create dynamic coupled forcings.
 
         Parameters
@@ -158,12 +153,4 @@ class SimpleRunner(Runner):
         # there are supposed to be already in the state dictionary
         # or managed by the user.
         LOG.warning("Coupled forcings are not supported by this runner: %s", variables)
-        return []
-
-    def create_boundary_forcings(
-        self, variables: List[str], mask: IntArray
-    ) -> List[Forcings]:
-        """
-        No boundaries needed for stretched grid
-        """
         return []

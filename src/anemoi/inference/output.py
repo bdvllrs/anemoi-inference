@@ -8,9 +8,11 @@
 #
 import datetime
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+from typing import Optional
 
 from anemoi.inference.types import State
 
@@ -200,9 +202,7 @@ class ForwardOutput(Output):
 
         from anemoi.inference.outputs import create_output
 
-        super().__init__(
-            context, output_frequency=None, write_initial_state=write_initial_state
-        )
+        super().__init__(context, output_frequency=None, write_initial_state=write_initial_state)
 
         self.output = None if output is None else create_output(context, output)
 
