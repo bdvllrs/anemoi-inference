@@ -17,6 +17,7 @@ from typing import List
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.grids.unstructured import UnstructuredGridFieldList
 from earthkit.data.indexing.fieldlist import FieldArray
 
 from anemoi.inference.context import Context
@@ -25,7 +26,6 @@ from anemoi.inference.types import Date
 from anemoi.inference.types import FloatArray
 from anemoi.inference.types import IntArray
 from anemoi.inference.types import State
-from anemoi.transform.grids.unstructured import UnstructuredGridFieldList
 
 LOG = logging.getLogger(__name__)
 
