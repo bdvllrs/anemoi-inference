@@ -9,7 +9,10 @@
 
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
 import numpy as np
 
@@ -66,37 +69,24 @@ class Cutout(Input):
         LOG.info(f"Concatenating states from {self.sources}")
         sources = list(self.sources.keys())
 
-        states: List[State] = [
-            self.sources[source].create_input_state(date=date) for source in sources
-        ]
+        states: List[State] = [self.sources[source].create_input_state(date=date) for source in sources]
 
         state: Dict[str, Any] = {
-            key: val
-            for key, val in states[0].items()
-            if key not in ["latitudes", "longitudes", "fields"]
+            key: val for key, val in states[0].items() if key not in ["latitudes", "longitudes", "fields"]
         }
 
         state["latitudes"] = np.concatenate(
-            [
-                _state["latitudes"][..., self.masks[source]]
-                for _state, source in zip(states, sources)
-            ],
+            [_state["latitudes"][..., self.masks[source]] for _state, source in zip(states, sources)],
             axis=-1,
         )
         state["longitudes"] = np.concatenate(
-            [
-                _state["longitudes"][..., self.masks[source]]
-                for _state, source in zip(states, sources)
-            ],
+            [_state["longitudes"][..., self.masks[source]] for _state, source in zip(states, sources)],
             axis=-1,
         )
-        state["fields"]: Dict[str, Any] = {}
+        state["fields"] = {}
         for field in states[0]["fields"]:
             state["fields"][field] = np.concatenate(
-                [
-                    _state["fields"][field][..., self.masks[source]]
-                    for _state, source in zip(states, sources)
-                ],
+                [_state["fields"][field][..., self.masks[source]] for _state, source in zip(states, sources)],
                 axis=-1,
             )
 
@@ -122,18 +112,15 @@ class Cutout(Input):
 
         sources = list(self.sources.keys())
         _fields = [
-            self.sources[source].load_forcings_state(
-                variables=variables, dates=dates, current_state=current_state
-            )["fields"]
+            self.sources[source].load_forcings_state(variables=variables, dates=dates, current_state=current_state)[
+                "fields"
+            ]
             for source in sources
         ]
         fields: dict[str, Any] = {}
         for field_name in _fields[0]:
             fields[field_name] = np.concatenate(
-                [
-                    _field[field_name][..., self.masks[source]]
-                    for _field, source in zip(_fields, sources)
-                ],
+                [_field[field_name][..., self.masks[source]] for _field, source in zip(_fields, sources)],
                 axis=-1,
             )
 

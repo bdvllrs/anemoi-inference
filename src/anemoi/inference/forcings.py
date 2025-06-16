@@ -17,16 +17,15 @@ from typing import List
 
 import earthkit.data as ekd
 import numpy as np
-from anemoi.transform.grids.unstructured import UnstructuredGridFieldList
 from earthkit.data.indexing.fieldlist import FieldArray
 
 from anemoi.inference.context import Context
 from anemoi.inference.inputs.dataset import DatasetInput
-from anemoi.inference.inputs.cutout import Cutout
 from anemoi.inference.types import Date
 from anemoi.inference.types import FloatArray
 from anemoi.inference.types import IntArray
 from anemoi.inference.types import State
+from anemoi.transform.grids.unstructured import UnstructuredGridFieldList
 
 LOG = logging.getLogger(__name__)
 
@@ -252,7 +251,7 @@ class BoundaryForcings(Forcings):
         super().__init__(context)
         self.variables = variables
         self.variables_mask = variables_mask
-        assert isinstance(input, (DatasetInput, Cutout)), "Currently only boundary forcings from dataset supported."
+        assert isinstance(input, DatasetInput), "Currently only boundary forcings from dataset supported."
         self.input = input
         if "output_mask" in context.checkpoint._supporting_arrays:
             self.spatial_mask = ~context.checkpoint.load_supporting_array("output_mask")
