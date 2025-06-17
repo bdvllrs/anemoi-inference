@@ -11,6 +11,7 @@
 import logging
 from typing import Any
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Optional
 
@@ -24,6 +25,31 @@ from anemoi.inference.types import State
 from . import input_registry
 
 LOG = logging.getLogger(__name__)
+
+
+def _combine_masked_states(
+    states: Iterable[Dict[str, Any]],
+    masks: Iterable[np.ndarray],
+    combined_state: Dict[str, Any],
+    fields: Iterable[str],
+) -> None:
+    """Combines different fields with masks.
+    Parameters
+    ----------
+    states : Iterable[Dict[str, Any]]
+        The fields to combine
+    masks : Iterable[np.ndarray]
+        The masks to apply to each field
+    combined_state : Dict[str, Any]
+        The final combined masked fields
+    fields : Iterable[str]
+        A list of fields to combine
+    """
+    for field in fields:
+        combined_state[field] = np.concatenate(
+            [state[field][..., mask] for state, mask in zip(states, masks)],
+            axis=-1,
+        )
 
 
 @input_registry.register("cutout")
@@ -45,7 +71,10 @@ class Cutout(Input):
         self.sources: dict[str, Input] = {}
         self.masks: dict[str, np.ndarray] = {}
         for src, cfg in sources.items():
-            mask = cfg.pop("mask", f"{src}/cutout_mask")
+            if isinstance(cfg, str):
+                mask = f"{src}/cutout_mask"
+            else:
+                mask = cfg.pop("mask", f"{src}/cutout_mask")
             self.sources[src] = create_input(context, cfg)
             self.masks[src] = self.sources[src].checkpoint.load_supporting_array(mask)
 
@@ -70,27 +99,19 @@ class Cutout(Input):
         sources = list(self.sources.keys())
 
         states: List[State] = [self.sources[source].create_input_state(date=date) for source in sources]
+        masks: List[np.ndarray] = [self.masks[source] for source in sources]
 
-        state: Dict[str, Any] = {
+        combined_state = {
             key: val for key, val in states[0].items() if key not in ["latitudes", "longitudes", "fields"]
         }
 
-        state["latitudes"] = np.concatenate(
-            [_state["latitudes"][..., self.masks[source]] for _state, source in zip(states, sources)],
-            axis=-1,
-        )
-        state["longitudes"] = np.concatenate(
-            [_state["longitudes"][..., self.masks[source]] for _state, source in zip(states, sources)],
-            axis=-1,
-        )
-        state["fields"] = {}
-        for field in states[0]["fields"]:
-            state["fields"][field] = np.concatenate(
-                [_state["fields"][field][..., self.masks[source]] for _state, source in zip(states, sources)],
-                axis=-1,
-            )
+        _combine_masked_states(states, masks, combined_state, fields=["latitudes", "longitudes"])
 
-        return state
+        combined_state["fields"] = {}
+        fields = [state["fields"] for state in states]
+
+        _combine_masked_states(fields, masks, combined_state["fields"], states[0]["fields"])
+        return combined_state
 
     def load_forcings_state(self, *, variables: List[str], dates: List[Date], current_state: State) -> State:
         """Load the forcings state for the given variables and dates.
@@ -111,18 +132,15 @@ class Cutout(Input):
         """
 
         sources = list(self.sources.keys())
-        _fields = [
+        masks: List[np.ndarray] = [self.masks[source] for source in sources]
+        fields = [
             self.sources[source].load_forcings_state(variables=variables, dates=dates, current_state=current_state)[
                 "fields"
             ]
             for source in sources
         ]
-        fields: dict[str, Any] = {}
-        for field_name in _fields[0]:
-            fields[field_name] = np.concatenate(
-                [_field[field_name][..., self.masks[source]] for _field, source in zip(_fields, sources)],
-                axis=-1,
-            )
+        combined_fields: dict[str, Any] = {}
+        _combine_masked_states(fields, masks, combined_fields, fields[0])
 
-        current_state["fields"] |= fields
+        current_state["fields"] |= combined_fields
         return current_state
