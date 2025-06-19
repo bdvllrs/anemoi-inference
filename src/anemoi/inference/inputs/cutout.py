@@ -9,8 +9,6 @@
 
 
 import logging
-from typing import Any
-from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Optional
@@ -27,29 +25,40 @@ from . import input_registry
 LOG = logging.getLogger(__name__)
 
 
-def _combine_masked_states(
-    states: Iterable[Dict[str, Any]],
-    masks: Iterable[np.ndarray],
-    combined_state: Dict[str, Any],
+def _mask_and_combine_states(
+    combined_state: State,
+    new_state: State,
+    combined_mask: Optional[np.ndarray],
+    mask: np.ndarray,
     fields: Iterable[str],
-) -> None:
-    """Combines different fields with masks.
+) -> State:
+    """Mask and combine two states.
+
     Parameters
     ----------
-    states : Iterable[Dict[str, Any]]
-        The fields to combine
-    masks : Iterable[np.ndarray]
-        The masks to apply to each field
-    combined_state : Dict[str, Any]
-        The final combined masked fields
-    fields : Iterable[str]
-        A list of fields to combine
+    combined_state : State
+        The state to be combined into.
+    new_state : State
+        The other state to combine.
+    combined_mask : Optional[np.ndarray]
+        The mask to apply to combined_state. If None, no mask is applied
+    mask : np.ndarray
+        The mask to apply to new_state.
+    fields: Iterable[str]
+        The fields to combine in the states
+
+    Returns
+    -------
+    State
+        The combined state
     """
     for field in fields:
         combined_state[field] = np.concatenate(
-            [state[field][..., mask] for state, mask in zip(states, masks)],
+            [combined_state[field][..., combined_mask], new_state[field][..., mask]],
             axis=-1,
         )
+
+    return combined_state
 
 
 @input_registry.register("cutout")
@@ -98,19 +107,20 @@ class Cutout(Input):
         LOG.info(f"Concatenating states from {self.sources}")
         sources = list(self.sources.keys())
 
-        states: List[State] = [self.sources[source].create_input_state(date=date) for source in sources]
-        masks: List[np.ndarray] = [self.masks[source] for source in sources]
+        combined_state = self.sources[sources[0]].create_input_state(date=date)
+        combined_mask = self.masks[sources[0]]
+        for source in sources[1:]:
+            mask = self.masks[source]
+            new_state = self.sources[source].create_input_state(date=date)
 
-        combined_state = {
-            key: val for key, val in states[0].items() if key not in ["latitudes", "longitudes", "fields"]
-        }
+            combined_state = _mask_and_combine_states(
+                combined_state, new_state, combined_mask, mask, ["longitudes", "latitudes"]
+            )
+            combined_state["fields"] = _mask_and_combine_states(
+                combined_state["fields"], new_state["fields"], combined_mask, mask, combined_state["fields"]
+            )
+            combined_mask = None
 
-        _combine_masked_states(states, masks, combined_state, fields=["latitudes", "longitudes"])
-
-        combined_state["fields"] = {}
-        fields = [state["fields"] for state in states]
-
-        _combine_masked_states(fields, masks, combined_state["fields"], states[0]["fields"])
         return combined_state
 
     def load_forcings_state(self, *, variables: List[str], dates: List[Date], current_state: State) -> State:
@@ -132,15 +142,19 @@ class Cutout(Input):
         """
 
         sources = list(self.sources.keys())
-        masks: List[np.ndarray] = [self.masks[source] for source in sources]
-        fields = [
-            self.sources[source].load_forcings_state(variables=variables, dates=dates, current_state=current_state)[
-                "fields"
-            ]
-            for source in sources
-        ]
-        combined_fields: dict[str, Any] = {}
-        _combine_masked_states(fields, masks, combined_fields, fields[0])
+        combined_fields = self.sources[sources[0]].load_forcings_state(
+            variables=variables, dates=dates, current_state=current_state
+        )["fields"]
+        combined_mask = self.masks[sources[0]]
+        for source in sources[1:]:
+            mask = self.masks[source]
+            new_fields = self.sources[source].load_forcings_state(
+                variables=variables, dates=dates, current_state=current_state
+            )["fields"]
+            combined_fields = _mask_and_combine_states(
+                combined_fields, new_fields, combined_mask, mask, combined_fields
+            )
+            combined_mask = None
 
         current_state["fields"] |= combined_fields
         return current_state
